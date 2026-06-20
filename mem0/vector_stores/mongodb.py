@@ -358,7 +358,7 @@ class MongoDB(VectorStoreBase):
             logger.error(f"Error getting collection info: {e}")
             return {}
 
-    def list(self, filters: Optional[Dict] = None, top_k: int = 100) -> List[OutputData]:
+    def list(self, filters: Optional[Dict] = None, top_k: int = 100) -> List[List[OutputData]]:
         """
         List vectors in the collection.
 
@@ -367,7 +367,8 @@ class MongoDB(VectorStoreBase):
             top_k (int, optional): Number of vectors to return.
 
         Returns:
-            List[OutputData]: List of vectors.
+            List[List[OutputData]]: A single-element list wrapping the list of vectors,
+            matching the contract of the other vector stores (callers index ``[0]``).
         """
         try:
             query = {}
@@ -382,10 +383,10 @@ class MongoDB(VectorStoreBase):
             cursor = self.collection.find(query).limit(top_k)
             results = [OutputData(id=str(doc["_id"]), score=None, payload=doc.get("payload")) for doc in cursor]
             logger.info(f"Retrieved {len(results)} documents from collection '{self.collection_name}'.")
-            return results
+            return [results]
         except PyMongoError as e:
             logger.error(f"Error listing documents: {e}")
-            return []
+            return [[]]
 
     def reset(self):
         """Reset the index by deleting and recreating it."""

@@ -322,9 +322,10 @@ def test_list(mongo_vector_fixture):
 
     mock_collection.find.assert_called_once_with({})
     mock_cursor.limit.assert_called_once_with(2)
-    assert len(results) == 2
-    assert results[0].id == "id1"
-    assert results[0].payload == {"key": "value1"}
+    assert len(results) == 1
+    assert len(results[0]) == 2
+    assert results[0][0].id == "id1"
+    assert results[0][0].payload == {"key": "value1"}
 
 
 def test_list_with_filters(mongo_vector_fixture):
@@ -349,11 +350,11 @@ def test_list_with_filters(mongo_vector_fixture):
     }
     mock_collection.find.assert_called_once_with(expected_query)
     mock_cursor.limit.assert_called_once_with(2)
-    
-    assert len(results) == 1
-    assert results[0].payload["user_id"] == "alice"
-    assert results[0].payload["agent_id"] == "agent1"
-    assert results[0].payload["run_id"] == "run1"
+
+    assert len(results[0]) == 1
+    assert results[0][0].payload["user_id"] == "alice"
+    assert results[0][0].payload["agent_id"] == "agent1"
+    assert results[0][0].payload["run_id"] == "run1"
 
 
 def test_list_with_single_filter(mongo_vector_fixture):
@@ -376,9 +377,9 @@ def test_list_with_single_filter(mongo_vector_fixture):
     }
     mock_collection.find.assert_called_once_with(expected_query)
     mock_cursor.limit.assert_called_once_with(2)
-    
-    assert len(results) == 1
-    assert results[0].payload["user_id"] == "alice"
+
+    assert len(results[0]) == 1
+    assert results[0][0].payload["user_id"] == "alice"
 
 
 def test_list_with_no_filters(mongo_vector_fixture):
@@ -395,5 +396,19 @@ def test_list_with_no_filters(mongo_vector_fixture):
     # Verify that the find method was called with empty query
     mock_collection.find.assert_called_once_with({})
     mock_cursor.limit.assert_called_once_with(2)
-    
+
     assert len(results) == 1
+    assert len(results[0]) == 1
+
+
+def test_list_empty_returns_wrapped_empty_list(mongo_vector_fixture):
+    """An empty result still returns [[]], so Memory.delete_all()'s ``list(...)[0]``
+    yields an (empty) list to iterate over rather than raising IndexError."""
+    mongo_vector, mock_collection, _ = mongo_vector_fixture
+    mock_cursor = mock_collection.find.return_value
+    mock_cursor.__iter__.return_value = []
+
+    results = mongo_vector.list(filters={"user_id": "alice"})
+
+    assert results == [[]]
+    assert results[0] == []
