@@ -47,6 +47,7 @@ def test_plain_text_response_and_command_shape(mock_run, monkeypatch):
     assert cmd[cmd.index("--system-prompt") + 1] == "You are terse."
     assert kwargs["input"] == "ping"
     assert kwargs["timeout"] == 30
+    assert kwargs["encoding"] == "utf-8"
     assert "CLAUDECODE" not in kwargs["env"]
     assert "CLAUDE_CODE_ENTRYPOINT" not in kwargs["env"]
     assert kwargs["env"]["MEM0_CLAUDE_HEADLESS"] == "1"
