@@ -1,0 +1,67 @@
+---
+title: Claude Code
+description: "Run Mem0 fact extraction through the Claude Code CLI in headless mode, with no API key."
+---
+
+The `claude_code` provider shells out to the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+(`claude -p`) and reuses the login already stored on the machine. It needs no `ANTHROPIC_API_KEY`, which makes it
+a good fit for personal setups where Claude is available through a subscription rather than an API key.
+
+Each `generate_response` call is one CLI invocation, so expect a few seconds per call.
+
+## Usage
+
+<CodeGroup>
+```python Python
+from mem0 import Memory
+
+config = {
+    "llm": {
+        "provider": "claude_code",
+        "config": {
+            "model": "claude-haiku-4-5",
+        }
+    },
+    "embedder": {
+        "provider": "huggingface",
+        "config": {"model": "sentence-transformers/all-MiniLM-L6-v2", "embedding_dims": 384}
+    },
+    "vector_store": {
+        "provider": "qdrant",
+        "config": {"collection_name": "memories", "embedding_model_dims": 384}
+    }
+}
+
+m = Memory.from_config(config)
+messages = [
+    {"role": "user", "content": "I'm planning to watch a movie tonight. Any recommendations?"},
+    {"role": "assistant", "content": "How about thriller movies? They can be quite engaging."},
+    {"role": "user", "content": "I'm not a big fan of thriller movies but I love sci-fi movies."},
+]
+m.add(messages, user_id="alice", metadata={"category": "movies"})
+```
+</CodeGroup>
+
+## Config
+
+| Parameter | Default | Description |
+|---|---|---|
+| `model` | `claude-haiku-4-5` | Passed to `claude --model` |
+| `claude_bin` | `claude` | Path or name of the Claude Code executable |
+| `timeout` | `120` | Seconds to wait for one call before raising |
+| `max_turns` | `1` | Passed to `claude --max-turns` |
+| `extra_args` | `["--safe-mode"]` | Extra CLI flags. `--safe-mode` disables hooks, plugins and MCP servers for the call while keeping the stored login. Set `["--bare"]` when `ANTHROPIC_API_KEY` is exported: `--bare` is faster but never reads the OAuth login. |
+
+`temperature`, `max_tokens` and the other sampling parameters are accepted for compatibility but the CLI does not
+expose them, so they are ignored.
+
+## How it works
+
+- System messages become `--system-prompt`; the remaining turns are sent as the prompt through stdin.
+- With `response_format={"type": "json_object"}` the provider asks for a bare JSON object and strips any code fence
+  or surrounding prose before returning it, so `json.loads` on the result works.
+- With `tools`, the tool schemas are described in the prompt and the result has the same shape as the other
+  providers: `{"content": ..., "tool_calls": [{"name": ..., "arguments": {...}}]}`.
+- The child process runs without `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` and with `MEM0_CLAUDE_HEADLESS=1`, so a
+  hook script can detect it and skip work that would otherwise recurse.
+- Any non-zero exit, timeout, or error envelope raises `mem0.llms.claude_code.ClaudeCodeError` with the CLI's message.

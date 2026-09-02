@@ -173,6 +173,7 @@
                             "pages": [
                               "components/llms/models/openai",
                               "components/llms/models/anthropic",
+                              "components/llms/models/claude_code",
                               "components/llms/models/azure_openai",
                               "components/llms/models/ollama",
                               "components/llms/models/together",

@@ -14,6 +14,7 @@ class LlmConfig(BaseModel):
             "openai",
             "ollama",
             "anthropic",
+            "claude_code",
             "groq",
             "together",
             "aws_bedrock",
